@@ -1,6 +1,5 @@
 # TurtleBot Contests
 ## MIE443H1: Mechatronics Systems: Design and Integration (Group 2, Winter 2017)
----
 
 This is the repository for the contest code for MIE443H1: Mechatronics Systems: Design and Integration (Group 2, Winter 2017).
 
