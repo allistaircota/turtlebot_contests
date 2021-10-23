@@ -9,7 +9,7 @@ The course consisted of three contests where teams program the open-source Turtl
 
 - Allisatir Cota
 - Jamal Stetieh
-- Kaicheng Zhang ([link to GitHub profile](https://github.com/KC-Zhang)
+- Kaicheng Zhang ([link to GitHub profile](https://github.com/KC-Zhang))
 - Samson Chiu
 
 ## Hardware
