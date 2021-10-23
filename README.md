@@ -21,5 +21,6 @@ The course consisted of three contests where teams program the open-source Turtl
 
 ## Contest Implementation
 
-- Ubuntu
-- Robotic Operating System (ROS)
+- **Operating system:** Ubuntu, Robotic Operating System (ROS)
+- **Languages:** C++
+- **Libraries:** OpenCV
