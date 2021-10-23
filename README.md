@@ -14,5 +14,12 @@ The course consisted of three contests where teams program the open-source Turtl
 
 ## Hardware
 
-- TurtleBot
+- TurtleBot2
+  - iClebo Kobuki Base
+  - Microsoft Kinect camera
+  - See full specs at https://www.turtlebot.com/turtlebot2/
 
+## Code
+
+- Ubuntu
+- Robotic Operating System (ROS)
