@@ -6,7 +6,7 @@ This is the repository for the contest code for MIE443H1: Mechatronics Systems: 
 The course consisted of three contests where teams program the open-source TurtleBot robotic kit to perform tasks such as mapping an unknown environment, identifying objects of interest, and interaction with humans.
 
 ## Team Members
----
+
 - Allisatir Cota
 - Jamal Stetieh
 - Kaicheng Zhang
