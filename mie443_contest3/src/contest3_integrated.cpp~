@@ -1,0 +1,291 @@
+#include <geometry_msgs/Twist.h>
+#include <image_transport/image_transport.h>
+#include <kobuki_msgs/BumperEvent.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <sensor_msgs/image_encodings.h>
+#include <stdio.h>
+#include <cmath>
+#include <eStop.h>
+
+#include <cv.h>
+#include <opencv2/highgui/highgui.hpp>
+#include "highgui.h"
+#include <cv_bridge/cv_bridge.h>
+
+#include "nav_header.h"
+#include <sound_play/sound_play.h>
+#include <tf/transform_datatypes.h>
+#include <sensor_msgs/LaserScan.h>
+
+using namespace std;
+using namespace cv;
+geometry_msgs::Twist follow_cmd;
+int world_state;
+
+//laser variables
+double laserRange = 10;
+double laserRangeL = 10;
+double laserRangeR = 10;
+int laserSize = 0, laserOffset = 0, desiredAngle = 10;
+
+//odom variables
+double posX, posY, yaw, yaw_update, yaw_init;
+const double pi = 3.1416;
+
+//tuning parameters
+const double linearOffset = 0.07;
+const double angularOffset = 0.07;
+const double laserDelta = 0.5;
+
+//emotion parameters
+//int rageCount = 0;
+double last_time = 0;
+int sadCount = 0;
+double rageCount = 0;
+//const int rageWaitLimit = 12;
+double rageWaitLimit = 6;
+int sadWaitLimit = 4;
+
+void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg){
+	laserSize = (msg->angle_max - msg->angle_min)/msg->angle_increment;
+	laserOffset = desiredAngle*pi/(180*msg->angle_increment);
+
+	laserRange = 11;
+	laserRangeL = 11;
+	laserRangeR = 11;
+	if(desiredAngle*pi/180 < msg->angle_max && -desiredAngle*pi/180 > msg->angle_min){
+		for(int i = laserSize/2 - laserOffset; i < laserSize/2 + laserOffset; i++){
+			if(laserRange>msg->ranges[i]){
+				//ROS_INFO("%f, %f",laserRange,msg->ranges[i]);
+				laserRange = msg->ranges[i];
+				//ROS_INFO("i: %i, size: %f", i,laserSize);
+			}
+		}
+		for(int j=1; j < laserSize/2 - laserOffset; j++){
+	//ROS_INFO("%i, %i", j, laserSize/2 - laserOffset);
+			if(laserRangeR>msg->ranges[j]){	
+				laserRangeR = msg->ranges[j];
+				//ROS_INFO("j");
+			}
+		}
+		for(int z = laserSize/2 + laserOffset; z < laserSize; z++){
+			if(laserRangeL>msg->ranges[z]){
+                                laserRangeL = msg->ranges[z];
+				//ROS_INFO("z");
+                        }
+		}
+	}
+	
+	else{
+		for(int i = 1; i < laserSize; i++){
+			if(laserRange>msg->ranges[i]){
+				//ROS_INFO("%f, %f",laserRange,msg->ranges[i]);
+				laserRange = msg->ranges[i];
+
+			}
+		}
+                for(int j=1; j < laserSize/2 - laserOffset; j++){
+                        if(laserRangeR>msg->ranges[j]){
+                                laserRangeR = msg->ranges[j];
+				//ROS_INFO("j");
+			}
+                        
+                }
+                for(int z = laserSize/2 + laserOffset; z < laserSize; z++){
+                        if(laserRangeL>msg->ranges[z]){
+                                laserRangeL = msg->ranges[z];
+				//ROS_INFO("z");
+			}
+                        
+		}
+
+	}
+
+	if(laserRange == 11)
+		laserRange =0;
+
+
+
+        if(laserRangeL == 11)
+                laserRangeL =0;
+
+
+        if(laserRangeR == 11)
+                laserRangeR =0;
+}
+
+void followerCB(const geometry_msgs::Twist msg){
+    follow_cmd = msg;
+}
+
+void bumperCB(const kobuki_msgs::BumperEvent msg){
+    //Fill with code
+}
+
+void depthCallback(const sensor_msgs::ImageConstPtr& dmsg){	
+	//Fill with code
+}
+
+void rgbCallback(const sensor_msgs::ImageConstPtr& msg){
+	//Fill with code
+}
+
+//-------------------------------------------------------------
+
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "image_listener");
+    ros::NodeHandle nh;
+    sound_play::SoundClient sc;
+    string path_to_sounds = "/home/turtlebot/catkin_ws/src/mie443_contest3/src/sounds/";
+    teleController eStop;
+
+    image_transport::ImageTransport it(nh);
+
+	//subscribers
+    ros::Subscriber follower = nh.subscribe("follower_velocity_smoother/smooth_cmd_vel", 10, &followerCB);
+    ros::Subscriber bumper = nh.subscribe("mobile_base/events/bumper", 10, &bumperCB);
+    image_transport::Subscriber rgb_sub = it.subscribe("camera/rgb/image_raw", 1, rgbCallback);
+	image_transport::Subscriber depth_sub = it.subscribe("camera/depth_registered/image_raw", 1, depthCallback); //--for the kinect
+	//image_transport::Subscriber sub = it.subscribe("camera/image/", 1, imageCallback); //--for the webcam
+	//ros::Subscriber odom = nh.subscribe("/odom", 1, odomCallback);
+	ros::Subscriber laser = nh.subscribe("scan", 1, laserCallback);
+
+	//publishers
+    ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop",1);
+
+    double angular = 0.0;
+    double linear = 0.0;
+    std::vector<cv::Mat> imgs_track;
+    imgs_track.push_back(cv::imread( "/home/turtlebot/catkin_ws/src/mie443_contest3/src/img/tag1.jpg"));
+    //_track.push_back(cv::imread( "/home/turtlebot/Pictures/Webcam/tag1.jpg"));
+    geometry_msgs::Twist vel;
+    vel.angular.z = angular;
+    vel.linear.x = linear;
+//    cout << "1: " << imgs_track.empty() << endl;
+//    cv::namedWindow("view");
+   // cv::startWindowrhread(); 
+   // cv::imshow("view", imgs_track);    
+
+    Mat image_normal = imread("/home/turtlebot/catkin_ws/src/mie443_contest3/src/img/normal.png", CV_LOAD_IMAGE_COLOR);
+    Mat image_angry = imread("/home/turtlebot/catkin_ws/src/mie443_contest3/src/img/angry.png", CV_LOAD_IMAGE_COLOR);
+    Mat image_sad = imread("/home/turtlebot/catkin_ws/src/mie443_contest3/src/img/sad.png", CV_LOAD_IMAGE_COLOR);
+    Mat image_love = imread("/home/turtlebot/catkin_ws/src/mie443_contest3/src/img/love.png", CV_LOAD_IMAGE_COLOR);   // Read the file
+
+    if(! image_normal.data || ! image_angry.data || ! image_love.data || ! image_sad.data)                              // Check for invalid input
+    { 
+        cout <<  "Could not open or find the image" << std::endl ;
+	return 0;
+    }
+    else{
+    namedWindow( "Display window", WINDOW_AUTOSIZE );// Create a window for display.
+    imshow( "Display window", image_normal );                   // Show our image inside it.
+    sc.playWave(path_to_sounds + "Infatuation1.wav");
+    waitKey(100);
+    
+    }
+    world_state = 0;
+    while(ros::ok()){
+        ros::spinOnce();
+        //.....**E-STOP DO NOT TOUCH**.......
+        eStop.block();
+        //...................................
+		if(abs(follow_cmd.linear.x) < linearOffset && abs(follow_cmd.angular.z) < angularOffset){
+			world_state = 1;
+		}
+		else{
+			world_state = 0;
+		}
+        if(world_state == 0){
+            //fill with your code
+            vel_pub.publish(follow_cmd);
+            sleep(0.5);
+//		cout<<"sound"<<endl;
+            //sc.playWave(path_to_sounds + "Infatuation1.wav");
+        }
+		else if(world_state == 1){
+
+				//if(abs(follow_cmd.linear.x) < linearOffset && abs(follow_cmd.angular.x) < angularOffset){
+					if(laserRange > 1 - laserDelta && laserRange < 1 + laserDelta/3){
+	                                        if(last_time == 0 || ros::Time::now().toSec() - last_time > rageWaitLimit+0.2 ){
+						last_time = ros::Time::now().toSec();
+						}
+						else if(floor(rageCount) == 2){
+							int foundIT = findPic(nh,imgs_track);
+							if(foundIT != 0){
+    							imshow( "Display window", image_love );                   // Show our image inside it.
+   							sc.playWave(path_to_sounds + "Infatuation1.wav");
+   							 waitKey(5);
+							} 
+						}	
+						else if(rageCount < rageWaitLimit){
+							ROS_INFO("Rage wait time %f", rageCount);
+							sleep(0.5);
+							rageCount = ros::Time::now().toSec() - last_time; 
+							imshow( "Display window", image_normal );                   // Show our image inside it.
+  							waitKey(50);	
+							//rageCounto+;
+						}
+						else{	
+							ROS_INFO("Rage");
+							sc.playWave(path_to_sounds + "Rage.wav");
+    							imshow( "Display window", image_angry );                   // Show our image inside it.
+  							waitKey(50);
+							sleep(3);
+							// Screen stuff
+							// Movement stuff
+							int motionCount = 0;
+							while(motionCount < 1000){
+								vel.angular.z = 0.5;
+    							vel.linear.x = 0;
+    							vel_pub.publish(vel);
+    							motionCount++;
+							}
+							
+                                                        last_time = 0;
+							last_time = 0;
+							rageCount = 0;	
+							imshow( "Display window", image_normal );                   // Show our image inside it.
+  							waitKey(50);	
+						}
+						
+						
+					}
+					else{
+						if(sadCount < sadWaitLimit){
+							ROS_INFO("Sad wait time");
+							sleep(0.5);
+							sadCount++;
+						}
+						else{
+							ROS_INFO("Sad");
+							sc.playWave(path_to_sounds + "Sad.wav");
+    							imshow( "Display window", image_sad );                   // Show our image inside it.
+  							waitKey(50);
+							sleep(1);
+							// Movement stuff
+							int motionCount = 0;
+							while(motionCount < 1000){
+								vel.angular.z = 0.0;
+    							vel.linear.x = 0.05;
+    							vel_pub.publish(vel);
+    							motionCount++;
+							rageCount = 0;	
+							last_time = 0;
+							}
+							// Screen stuff
+							sadCount = 0;
+						}
+											
+					}					
+
+				//}
+
+
+        }
+
+	//ROS_INFO("Follow_cmd: %f,%f, LaserRange:%f", follow_cmd.linear.x,follow_cmd.angular.z,laserRange);	
+    }
+
+	return 0;
+}
