@@ -12,4 +12,7 @@ The course consisted of three contests where teams program the open-source Turtl
 - Kaicheng Zhang
 - Samson Chiu
 
+## Hardware
+
+- TurtleBot
 
