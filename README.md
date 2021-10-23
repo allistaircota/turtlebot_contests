@@ -19,7 +19,7 @@ The course consisted of three contests where teams program the open-source Turtl
   - Microsoft Kinect camera
   - See full specs at https://www.turtlebot.com/turtlebot2/
 
-## Code
+## Contest Implementation
 
 - Ubuntu
 - Robotic Operating System (ROS)
