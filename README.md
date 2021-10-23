@@ -35,11 +35,12 @@ The TurtleBot was programmed to navigate an environment to find and identify the
 
 To minimize the time taken to complete the contest, the code contained an implementation of the Nearest Neighbor Algorithm to determine the order of the boxes to be visited by the TurtleBot. For object identification, the OpenCV SURF feature detection library was used to capture the appropriate frame from the Kinect video feed and identify the tags, and their identities were printed to the laptop terminal. This contest was a success as the TurtleBot correctly identified all the image tags, and also recorded the joint fastest time among the class (1 min 20 seconds) which was well under the maximum time limit of 5 minutes.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/EfZgIFzAAWA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+See a video of a practice run: https://youtu.be/EfZgIFzAAWA
 
 ## Contest 3: Follow Me Robot Companion
 
 This contest involved programming an interactive TurtleBot. The TurtleBot has to follow a member of the team while he/she moved within the environment. In addition, the TurtleBot had to interact with the user via emotions, specifically two primary/reactive emotions and two secondary/deliberative emotions. Each emotion would be shown in response to its distinct stimulus. A panel of judges (comprising of the course instructor and teaching assistants) had to be able to guess each emotion during the contest for full marks. Teams were allowed to use a variety input and output modes, so long as they utilized the standard hardware (no external hardware was allowed).
-
  
 The team used the Kinect depth data to determine object to robot distance, along with the Kinect video feed and Open CV SURF feature detection library to perform image identification. In addition, the Kobuki Base bumpers were utilized to detect stimulus. In terms of outputs, velocity commands to the Kobuki base, audio and emoticon images were used to show each emotion. Being inspired by R2-D2 from Star Wars and the real world commercial pet robot AIBO, the team decided to give the TurtleBot its unique "voice" by developing a tone using the Caustic synthesizer, and playing different note patterns with the same synthesizer settings to distinguish between the sound for each emotion. In addition, the emoticon facial expressions were modified subtly to convey the change in emotion. The team got full marks for the contest implementation but acknowledges that the more complex architectures could be designed given more time.
+
+See a video of the contest run: https://youtu.be/6V_B-d3TWco
